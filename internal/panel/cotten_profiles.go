@@ -37,7 +37,11 @@ func cottenKey(seed []byte) string {
 }
 
 func (s *Store) profiles(c Client, cfg Settings) (map[string]string, error) {
-	return s.profilesAt(c, cfg, cfg.primaryZone())
+	zone, ok := cfg.clientPrimaryZone(c)
+	if !ok {
+		return nil, errNoTunnelDomain
+	}
+	return s.profilesAt(c, cfg, zone)
 }
 
 func (s *Store) profilesAt(c Client, cfg Settings, base string) (map[string]string, error) {

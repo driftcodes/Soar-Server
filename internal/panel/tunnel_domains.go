@@ -6,6 +6,7 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"net"
 	"net/http"
@@ -90,11 +91,128 @@ func (s Settings) accountZone(c Client, base string) string {
 	label = label[:min(len(label), 44-len(base))]
 	return label + "." + base
 }
+
+// zoneList is an account's tunnel domain list. It is held as a comma-separated
+// string so Client stays a comparable value, and is encoded as a JSON array.
+// Domain names are validated and can never contain a comma.
+type zoneList string
+
+func newZoneList(zones []string) zoneList { return zoneList(strings.Join(zones, ",")) }
+
+func (z zoneList) list() []string {
+	if z == "" {
+		return nil
+	}
+	return strings.Split(string(z), ",")
+}
+
+func (z zoneList) MarshalJSON() ([]byte, error) {
+	zones := z.list()
+	if zones == nil {
+		zones = []string{}
+	}
+	return json.Marshal(zones)
+}
+
+func (z *zoneList) UnmarshalJSON(raw []byte) error {
+	var zones []string
+	if err := json.Unmarshal(raw, &zones); err != nil {
+		return err
+	}
+	for _, zone := range zones {
+		if zone == "" || strings.Contains(zone, ",") {
+			return errors.New("invalid account tunnel domain")
+		}
+	}
+	*z = newZoneList(zones)
+	return nil
+}
+
+// allowsTunnelZone reports whether an account may use a configured tunnel
+// domain. Accounts without a domain list (all pre-existing accounts) may use
+// every configured domain, including domains added later.
+func (c Client) allowsTunnelZone(base string) bool {
+	if c.TunnelZones == "" {
+		return true
+	}
+	for _, zone := range c.TunnelZones.list() {
+		if zone == base {
+			return true
+		}
+	}
+	return false
+}
+
+// clientTunnelZones returns the configured tunnel domains this account may
+// use, in configuration order. A restriction that names only removed domains
+// yields no domains, so the account is never silently widened to all of them.
+func (s Settings) clientTunnelZones(c Client) []string {
+	var zones []string
+	for _, base := range s.tunnelZones() {
+		if c.allowsTunnelZone(base) {
+			zones = append(zones, base)
+		}
+	}
+	return zones
+}
+
+// clientOrderedZones is clientTunnelZones in preference order: the primary
+// domain first when the account may use it.
+func (s Settings) clientOrderedZones(c Client) []string {
+	var zones []string
+	for _, base := range s.orderedZones() {
+		if c.allowsTunnelZone(base) {
+			zones = append(zones, base)
+		}
+	}
+	return zones
+}
+
+// clientPrimaryZone is the domain used for an account's direct link.
+func (s Settings) clientPrimaryZone(c Client) (string, bool) {
+	zones := s.clientOrderedZones(c)
+	if len(zones) == 0 {
+		return "", false
+	}
+	return zones[0], true
+}
+
+var errNoTunnelDomain = errors.New("no tunnel domain is assigned to this account")
+
+// normalizeClientTunnelZones cleans an account's domain list and checks every
+// entry against the configured tunnel domains. An empty list means all domains.
+func (s Settings) normalizeClientTunnelZones(in []string) ([]string, error) {
+	if len(in) == 0 {
+		return nil, nil
+	}
+	if len(in) > 8 {
+		return nil, errors.New("an account can use at most eight tunnel domains")
+	}
+	configured := map[string]bool{}
+	for _, zone := range s.tunnelZones() {
+		configured[zone] = true
+	}
+	seen := map[string]bool{}
+	var out []string
+	for _, zone := range in {
+		zone = strings.ToLower(strings.TrimSuffix(strings.TrimSpace(zone), "."))
+		if !configured[zone] {
+			return nil, errors.New("account tunnel domains must be chosen from the configured tunnel domains")
+		}
+		if !seen[zone] {
+			seen[zone] = true
+			out = append(out, zone)
+		}
+	}
+	return out, nil
+}
+
 func (s Settings) accountZones(c Client) []string {
 	var zones []string
 	// Configuration order, rather than preference, keeps live connections intact
-	// when only the preferred domain changes.
-	for _, base := range s.tunnelZones() {
+	// when only the preferred domain changes. Domains the account may not use are
+	// never routed to it, so editing a profile's domain cannot bypass the limit.
+	for _, base := range s.clientTunnelZones(c) {
 		zones = append(zones, s.accountZone(c, base))
 	}
 	return zones

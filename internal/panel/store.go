@@ -130,6 +130,9 @@ type Client struct {
 	CreatedAt             int64  `json:"created_at"`
 	UpdatedAt             int64  `json:"updated_at"`
 	LastSeen              int64  `json:"last_seen"`
+	// TunnelZones limits the account to these configured tunnel domains.
+	// Empty means every configured domain, including ones added later.
+	TunnelZones zoneList `json:"tunnel_zones,omitempty"`
 }
 
 type ClientInput struct {
@@ -145,6 +148,9 @@ type ClientInput struct {
 	CottenSessionLimit    *int   `json:"cotten_session_limit,omitempty"`
 	MasterDNSSessionLimit *int   `json:"masterdns_session_limit,omitempty"`
 	Revision              uint64 `json:"revision"`
+	// Omitted preserves the account's domains (older API and Telegram callers);
+	// an empty list allows every configured tunnel domain.
+	TunnelZones *[]string `json:"tunnel_zones,omitempty"`
 }
 
 func (c Client) Used() int64 { return c.UploadBytes + c.DownloadBytes }
@@ -367,6 +373,9 @@ func (s *Store) saveSettings(v Settings, streamLimit *int) error {
 		if e := v.Validate(); e != nil {
 			return e
 		}
+		if e := pruneClientTunnelZones(tx, old, v); e != nil {
+			return e
+		}
 		if e := putJSON(b, []byte("settings"), v); e != nil {
 			return e
 		}
@@ -411,12 +420,15 @@ func (s *Store) create(in ClientInput, installerProbe bool) (c Client, e error) 
 	now := time.Now().UnixMilli()
 	c = Client{ID: id, Zone: zone, PublicKey: pub, CreatedAt: now, UpdatedAt: now, Revision: 1, UsageEpoch: 1, InstallerProbe: installerProbe,
 		SoarSessionLimit: DefaultSoarSessionLimit, CottenSessionLimit: DefaultCottenSessionLimit, MasterDNSSessionLimit: DefaultMasterDNSSessionLimit}
-	applyInput(&c, in)
 	e = s.db.Update(func(tx *bolt.Tx) error {
 		b := tx.Bucket(clients)
 		if b.Stats().KeyN >= capacity {
 			return errors.New("account capacity reached")
 		}
+		if e := normalizeInputTunnelZones(tx, &in); e != nil {
+			return e
+		}
+		applyInput(&c, in)
 		if e := putJSON(b, []byte(id), c); e != nil {
 			return e
 		}
@@ -448,6 +460,77 @@ func applyInput(c *Client, in ClientInput) {
 	if in.CottenSessionLimit != nil {
 		c.CottenSessionLimit = *in.CottenSessionLimit
 	}
+	if in.TunnelZones != nil {
+		c.TunnelZones = newZoneList(*in.TunnelZones)
+	}
+}
+
+// normalizeInputTunnelZones checks a requested domain list against the
+// settings committed in the same transaction as the account write.
+func normalizeInputTunnelZones(tx *bolt.Tx, in *ClientInput) error {
+	if in.TunnelZones == nil {
+		return nil
+	}
+	var cfg Settings
+	if e := json.Unmarshal(tx.Bucket(meta).Get([]byte("settings")), &cfg); e != nil {
+		return e
+	}
+	zones, e := cfg.normalizeClientTunnelZones(*in.TunnelZones)
+	if e != nil {
+		return e
+	}
+	in.TunnelZones = &zones
+	return nil
+}
+
+// pruneClientTunnelZones removes deleted tunnel domains from restricted
+// accounts. It refuses a change that would leave a restricted account with no
+// domain, rather than silently granting it every domain or locking it out.
+func pruneClientTunnelZones(tx *bolt.Tx, old, v Settings) error {
+	if strings.Join(old.tunnelZones(), ",") == strings.Join(v.tunnelZones(), ",") {
+		return nil
+	}
+	b := tx.Bucket(clients)
+	var stranded []string
+	updated := map[string]Client{}
+	if e := b.ForEach(func(k, raw []byte) error {
+		var c Client
+		if e := json.Unmarshal(raw, &c); e != nil {
+			return e
+		}
+		if c.TunnelZones == "" {
+			return nil
+		}
+		kept := v.clientTunnelZones(c)
+		if len(kept) == 0 {
+			stranded = append(stranded, c.Name)
+			return nil
+		}
+		if len(kept) != len(c.TunnelZones.list()) {
+			c.TunnelZones = newZoneList(kept)
+			c.Revision++
+			c.UpdatedAt = time.Now().UnixMilli()
+			updated[string(k)] = c
+		}
+		return nil
+	}); e != nil {
+		return e
+	}
+	if len(stranded) > 0 {
+		if len(stranded) > 5 {
+			stranded = append(stranded[:5], fmt.Sprintf("and %d more", len(stranded)-5))
+		}
+		return fmt.Errorf("these accounts can only use the tunnel domains being removed; give them another domain first: %s", strings.Join(stranded, ", "))
+	}
+	for id, c := range updated {
+		if e := putJSON(b, []byte(id), c); e != nil {
+			return e
+		}
+		if e := addEvent(tx, "client.tunnel_domains_pruned", id); e != nil {
+			return e
+		}
+	}
+	return nil
 }
 func getClient(tx *bolt.Tx, id string) (c Client, e error) {
 	raw := tx.Bucket(clients).Get([]byte(id))
@@ -503,6 +586,9 @@ func (s *Store) Edit(id string, in ClientInput) (c Client, e error) {
 		}
 		if in.Revision != c.Revision {
 			return ErrConflict
+		}
+		if e := normalizeInputTunnelZones(tx, &in); e != nil {
+			return e
 		}
 		applyInput(&c, in)
 		c.Revision++

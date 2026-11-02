@@ -171,8 +171,18 @@ func (h *HTTP) serveSubscription(w http.ResponseWriter, r *http.Request) {
 		jsonReply(w, http.StatusForbidden, map[string]string{"error": "subscription account is inactive", "status": state})
 		return
 	}
+	zones := cfg.clientOrderedZones(c)
+	if len(zones) == 0 {
+		w.Header().Set("X-WhiteDNS-Account-Status", "no_tunnel_domain")
+		if r.Method == "HEAD" {
+			w.WriteHeader(http.StatusForbidden)
+			return
+		}
+		jsonReply(w, http.StatusForbidden, map[string]string{"error": errNoTunnelDomain.Error(), "status": "no_tunnel_domain"})
+		return
+	}
 	body := ""
-	for _, zone := range cfg.orderedZones() {
+	for _, zone := range zones {
 		links, err := h.store.profilesAt(c, cfg, zone)
 		if err != nil {
 			http.Error(w, "subscription unavailable", 500)

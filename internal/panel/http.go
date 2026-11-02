@@ -470,9 +470,13 @@ func (h *HTTP) clientList(w http.ResponseWriter, r *http.Request) {
 		}
 		views := make([]clientView, 0, len(list))
 		for _, client := range list {
-			views = append(views, clientView{client, cfg.accountZone(client, cfg.primaryZone())})
+			connect := ""
+			if zone, ok := cfg.clientPrimaryZone(client); ok {
+				connect = cfg.accountZone(client, zone)
+			}
+			views = append(views, clientView{client, connect})
 		}
-		jsonReply(w, 200, map[string]any{"clients": views, "connections": h.manager.ActiveCounts(), "now": time.Now().UnixMilli()})
+		jsonReply(w, 200, map[string]any{"clients": views, "connections": h.manager.ActiveCounts(), "now": time.Now().UnixMilli(), "tunnel_zones": cfg.tunnelZones()})
 	case "POST":
 		var in ClientInput
 		if e := decodeJSON(w, r, &in); e != nil {
