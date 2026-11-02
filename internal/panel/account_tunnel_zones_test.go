@@ -463,3 +463,124 @@ func TestTelegramTunnelDomainRemovalRespectsAccountRestrictions(t *testing.T) {
 		}
 	})
 }
+
+// Telegram's account form can view, limit, widen and preserve tunnel domains
+// with the same rules as the web dialog.
+func TestTelegramAccountTunnelDomains(t *testing.T) {
+	bot, f, _ := newTelegramTest(t)
+	s := bot.h.store
+	cfg := addAltZone(t, s)
+	ctx := context.Background()
+	last := func() (string, map[string]string) {
+		f.mu.Lock()
+		defer f.mu.Unlock()
+		buttons := map[string]string{}
+		for _, row := range f.keyboards[len(f.keyboards)-1].Rows {
+			for _, b := range row {
+				if len(b.Data) > 64 {
+					t.Fatal("Telegram callback data exceeds 64 bytes", b.Data)
+				}
+				buttons[b.Text] = b.Data
+			}
+		}
+		return f.texts[len(f.texts)-1], buttons
+	}
+	call := func(data string) {
+		t.Helper()
+		if err := bot.callback(ctx, data); err != nil {
+			t.Fatal(data, err)
+		}
+	}
+
+	// Create an account limited to the alternate domain.
+	mustHandle(t, bot, tgCallback(1, "new"))
+	name := tgMessage(2, "Telegram limited")
+	name.Message.Reply = &struct {
+		ID int64 `json:"message_id"`
+	}{bot.conversation.Prompt}
+	mustHandle(t, bot, name)
+	key := bot.conversation.Key
+	call("review:" + key)
+	if text, buttons := last(); !strings.Contains(text, "Tunnel domains: All tunnel domains") || buttons["🌐 Domains"] != "field:"+key+":zones" {
+		t.Fatal("review does not show or offer tunnel domains", text, buttons)
+	}
+	call("field:" + key + ":zones")
+	text, buttons := last()
+	if buttons["✅ All tunnel domains"] != "set:"+key+":zones:all" || buttons["✅ "+cfg.BaseZone] == "" || buttons["✅ "+altZone] == "" || buttons["↩️ Done"] != "review:"+key {
+		t.Fatal("domain menu", text, buttons)
+	}
+	call(buttons["✅ "+cfg.BaseZone])
+	text, buttons = last()
+	if !strings.Contains(text, ": "+altZone+"\n") || buttons["⬜ All tunnel domains"] == "" || buttons["⬜ "+cfg.BaseZone] == "" || buttons["✅ "+altZone] == "" {
+		t.Fatal("removing a domain did not limit the draft", text, buttons)
+	}
+	if err := bot.callback(ctx, buttons["✅ "+altZone]); err == nil {
+		t.Fatal("Telegram allowed an account with no tunnel domain")
+	}
+	if err := bot.callback(ctx, "set:"+key+":zone:evil.example.com"); err == nil {
+		t.Fatal("Telegram accepted an unconfigured domain")
+	}
+	call("save:" + key)
+	if text, _ = last(); !strings.Contains(text, "Tunnel domains: "+altZone) {
+		t.Fatal("confirmation hides the domain limit", text)
+	}
+	call("ok:" + bot.confirmation.Key)
+	list, _ := s.List()
+	if len(list) != 1 || !reflect.DeepEqual(list[0].TunnelZones.list(), []string{altZone}) {
+		t.Fatal("Telegram did not create the limited account", list)
+	}
+	c := list[0]
+
+	// The account view shows it; editing other fields keeps it.
+	call("user:" + c.ID)
+	if text, _ = last(); !strings.Contains(text, "Tunnel domains: "+altZone) {
+		t.Fatal("account view hides the domain limit", text)
+	}
+	call("edit:" + c.ID)
+	key = bot.conversation.Key
+	if err := bot.setField(bot.conversation, "name", "Telegram renamed"); err != nil {
+		t.Fatal(err)
+	}
+	call("save:" + key)
+	call("ok:" + bot.confirmation.Key)
+	if c, _ = s.Get(c.ID); c.Name != "Telegram renamed" || !reflect.DeepEqual(c.TunnelZones.list(), []string{altZone}) {
+		t.Fatal("editing another field changed the domain limit", c)
+	}
+
+	// Add the base domain back (configuration order is kept), then allow all.
+	call("edit:" + c.ID)
+	key = bot.conversation.Key
+	call("field:" + key + ":zones")
+	if _, buttons = last(); buttons["⬜ "+cfg.BaseZone] == "" || buttons["✅ "+altZone] == "" {
+		t.Fatal("edit menu does not reflect the saved limit", buttons)
+	}
+	call(buttons["⬜ "+cfg.BaseZone])
+	if !reflect.DeepEqual(*bot.conversation.Input.TunnelZones, []string{cfg.BaseZone, altZone}) {
+		t.Fatal("adding a domain", *bot.conversation.Input.TunnelZones)
+	}
+	call("set:" + key + ":zones:all")
+	call("save:" + key)
+	call("ok:" + bot.confirmation.Key)
+	if c, _ = s.Get(c.ID); c.TunnelZones != "" {
+		t.Fatal("All tunnel domains was not saved", c.TunnelZones)
+	}
+
+	// A draft naming a domain that is removed before confirmation is refused.
+	call("edit:" + c.ID)
+	key = bot.conversation.Key
+	call("field:" + key + ":zones")
+	call("set:" + key + ":zone:" + cfg.BaseZone)
+	call("save:" + key)
+	confirmation := bot.confirmation.Key
+	next := cfg
+	next.TunnelZones = []string{cfg.BaseZone}
+	if err := s.SaveSettings(next); err != nil {
+		t.Fatal(err)
+	}
+	if err := bot.callback(ctx, "ok:"+confirmation); err == nil {
+		t.Fatal("Telegram saved a domain that no longer exists")
+	}
+	if c, _ = s.Get(c.ID); c.TunnelZones != "" {
+		t.Fatal("refused Telegram edit changed the account")
+	}
+}
