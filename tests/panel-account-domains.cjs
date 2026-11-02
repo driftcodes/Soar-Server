@@ -59,9 +59,36 @@ module.exports=async({page,out,assert})=>{
   await page.screenshot({path:path.join(out,'account-domains-375.png')});
   await page.locator('#client-dialog .close-dialog').first().click();
   await page.setViewportSize({width:1440,height:1100});
+  // The dialog refreshes the domain list in the background. Hold that request to
+  // land the response mid-edit; it must never change "limited" into "all".
+  const holdDomainList=async()=>{let release;const held=new Promise(r=>release=r);await page.route('**/api/tunnel-domains',async route=>{if(route.request().method()!=='GET')return route.fallback();await held;await route.continue();},{times:1});return async()=>{const done=page.waitForResponse(r=>r.url().endsWith('/api/tunnel-domains')&&r.request().method()==='GET');release();await done;await page.evaluate(()=>new Promise(r=>setTimeout(r,50)));};};
+  let releaseDomains=await holdDomainList();
+  await page.locator('#page-clients .new-client').click();await page.locator('#client-zones').waitFor({state:'visible'});
+  await form.locator('[name=name]').fill('Delayed domain list');await form.locator('[name=all_zones]').uncheck();
+  for(const input of await page.locator('#client-zone-options input').all())await input.uncheck();
+  await releaseDomains();
+  assert.equal(await form.locator('[name=all_zones]').isChecked(),false,'a late domain list switched a limited selection to all domains');
+  assert.equal(await page.locator('#client-zone-options').isVisible(),true);
+  assert.equal(await page.locator('#client-zone-options input:checked').count(),0,'a late domain list changed the selection');
+  await form.locator('[type=submit]').click();
+  assert.match(await page.locator('#client-form-error').innerText(),/دامنه/,'an empty limited selection must not save');
+  assert.equal(await page.evaluate(async()=>(await api('/clients')).clients.find(c=>c.name==='Delayed domain list')),undefined);
+  await page.locator('#client-dialog .close-dialog').first().click();
+  // Single-domain server: switching a limited account to "all" must stick even if
+  // the domain list arrives after the click.
+  await page.evaluate(async({id,zone})=>{const c=(await api('/clients')).clients.find(c=>c.id===id);await api('/clients/'+id,'PUT',{engines:c.engines,name:c.name,note:c.note,enabled:c.enabled,quota_bytes:c.quota_bytes,rate_bytes:c.rate_bytes,stream_limit:c.stream_limit,expires_at:c.expires_at,revision:c.revision,tunnel_zones:[zone]});await api('/tunnel-domains','PUT',{zones:[zone],primary:zone});await refresh();},{id:account.id,zone:original.primary});
+  account=await read();assert.deepEqual(account.tunnel_zones,[original.primary]);
+  releaseDomains=await holdDomainList();
+  await row.getByRole('button',{name:'ویرایش',exact:true}).click();await page.locator('#client-zones').waitFor({state:'visible'});
+  await form.locator('[name=all_zones]').check();
+  await releaseDomains();
+  assert.equal(await page.locator('#client-zones').isVisible(),true,'the domain field disappeared while being edited');
+  assert.equal(await form.locator('[name=all_zones]').isChecked(),true);
+  await form.locator('[type=submit]').click();await page.locator('#client-dialog').waitFor({state:'hidden'});
+  account=await read();assert.equal(account.tunnel_zones,undefined,'switching to all domains was not saved on a single-domain server');
   await page.evaluate(id=>api('/clients/'+id,'DELETE'),account.id);
  }finally{
   await page.evaluate(d=>api('/tunnel-domains','PUT',{zones:d.zones,primary:d.primary}),original).catch(()=>{});
  }
- console.log('PASS: per-account tunnel domains in create/edit, required selection, subscription filtering, toggle preservation, removal guard and phone layout.');
+ console.log('PASS: per-account tunnel domains in create/edit, required selection, subscription filtering, toggle preservation, removal guard, late domain-list responses and phone layout.');
 };

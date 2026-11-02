@@ -382,3 +382,84 @@ func TestAccountTunnelZonesEnforcedByAllEngines(t *testing.T) {
 		t.Fatal("account still blocked on the base domain after allowing all domains")
 	}
 }
+
+// Telegram's server editor uses its own compare-and-save transaction. It must
+// enforce the same account-domain invariant as the web form, against the
+// accounts as they are when the change is confirmed.
+func TestTelegramTunnelDomainRemovalRespectsAccountRestrictions(t *testing.T) {
+	removeAltViaTelegram := func(t *testing.T, bot *Telegram, base string, beforeConfirm func()) error {
+		t.Helper()
+		ctx := context.Background()
+		if err := bot.callback(ctx, "server:tunnel_zones"); err != nil {
+			t.Fatal(err)
+		}
+		if err := bot.message(ctx, replyToBot(bot, base)); err != nil {
+			t.Fatal(err)
+		}
+		if beforeConfirm != nil {
+			beforeConfirm()
+		}
+		return bot.execute(ctx, bot.confirmation.Key)
+	}
+	t.Run("refuses removing the only allowed domain", func(t *testing.T) {
+		bot, _, _ := newTelegramTest(t)
+		s := bot.h.store
+		cfg := addAltZone(t, s)
+		c, err := s.Create(ClientInput{Name: "Restricted customer", Engines: "all", Enabled: true, TunnelZones: zonesPtr(altZone)})
+		if err != nil {
+			t.Fatal(err)
+		}
+		err = removeAltViaTelegram(t, bot, cfg.BaseZone, nil)
+		if err == nil || !strings.Contains(err.Error(), "Restricted customer") {
+			t.Fatal("Telegram removed a restricted account's only domain", err)
+		}
+		after, _ := s.Settings()
+		stored, _ := s.Get(c.ID)
+		if !reflect.DeepEqual(after.tunnelZones(), cfg.tunnelZones()) || stored != c {
+			t.Fatal("refused Telegram change was partially saved", after.tunnelZones(), stored.TunnelZones)
+		}
+	})
+	t.Run("prunes a removed domain", func(t *testing.T) {
+		bot, _, _ := newTelegramTest(t)
+		s := bot.h.store
+		cfg := addAltZone(t, s)
+		c, err := s.Create(ClientInput{Name: "Two domains", Engines: "all", Enabled: true, TunnelZones: zonesPtr(altZone, cfg.BaseZone)})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err = removeAltViaTelegram(t, bot, cfg.BaseZone, nil); err != nil {
+			t.Fatal(err)
+		}
+		stored, _ := s.Get(c.ID)
+		if !reflect.DeepEqual(stored.TunnelZones.list(), []string{cfg.BaseZone}) || stored.Revision != c.Revision+1 {
+			t.Fatal("Telegram did not prune the removed domain", stored.TunnelZones, stored.Revision)
+		}
+		events, _ := s.Events()
+		found := false
+		for _, ev := range events {
+			found = found || ev.Action == "client.tunnel_domains_pruned" && ev.ClientID == c.ID
+		}
+		if !found {
+			t.Fatal("pruning was not audited")
+		}
+	})
+	t.Run("checks accounts restricted after the preview", func(t *testing.T) {
+		bot, _, _ := newTelegramTest(t)
+		s := bot.h.store
+		cfg := addAltZone(t, s)
+		var late Client
+		err := removeAltViaTelegram(t, bot, cfg.BaseZone, func() {
+			var e error
+			if late, e = s.Create(ClientInput{Name: "Restricted late", Engines: "all", Enabled: true, TunnelZones: zonesPtr(altZone)}); e != nil {
+				t.Fatal(e)
+			}
+		})
+		if err == nil || !strings.Contains(err.Error(), "Restricted late") {
+			t.Fatal("confirmation ignored an account restricted after the preview", err)
+		}
+		after, _ := s.Settings()
+		if stored, _ := s.Get(late.ID); !reflect.DeepEqual(after.tunnelZones(), cfg.tunnelZones()) || stored != late {
+			t.Fatal("refused Telegram change was partially saved")
+		}
+	})
+}

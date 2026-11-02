@@ -180,7 +180,7 @@ By default an account may use every tunnel domain, including domains added later
 - The subscription and direct links contain only the allowed domains. If the preferred domain is not allowed, direct links use the first allowed one.
 - The server enforces the limit for Soar, Cotten and MasterDNS: the account is not routed on other domains, so editing a profile's domain by hand does not bypass it.
 - Keys, usage and subscription URLs do not change; refresh the subscription in the app after a change.
-- Removing a tunnel domain also removes it from restricted accounts. A removal that would leave a restricted account with no domain is refused and names the account.
+- Removing a tunnel domain, from the panel or Telegram, also removes it from restricted accounts. A removal that would leave a restricted account with no domain is refused and names the account.
 - API: `tunnel_zones` on `POST/PUT /api/clients` takes a list of configured domains; `[]` means all domains and omitting the field keeps the current value. Telegram edits keep the current value and Telegram-created accounts may use all domains.
 
 
