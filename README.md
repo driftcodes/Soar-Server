@@ -23,7 +23,7 @@
 با SSH وارد سرور شوید و اجرا کنید:
 
 ```bash
-bash <(curl -fsSL https://raw.githubusercontent.com/WhiteDNS/Soar-Server/main/panel-setup.sh)
+bash <(curl -fsSL https://raw.githubusercontent.com/driftcodes/Soar-Server/main/panel-setup.sh)
 ```
 
 نصب‌کننده در هر اجرا آخرین نسخهٔ پایدار معرفی‌شده در Releases را پیدا می‌کند و بستهٔ سازگار با معماری سرور و checksum آن را دریافت و بررسی می‌کند؛ سپس هفت مرحلهٔ نصب را با توضیح هر مرحله پیش می‌برد. دسترسی root یا sudo و systemd لازم است؛ Go، Docker، Node یا پایگاه دادهٔ جدا روی سرور لازم نیست. متن ترمینال **انگلیسی و ASCII** است تا در SSH درست نمایش داده شود.
@@ -83,9 +83,9 @@ sudo apt-get install -y curl
 
 این انتشار پایدارِ **پنل مدیریت** است. پورت‌های مقصد پیش‌فرض 80/443 هستند؛ در مسیر پراکسی می‌توان سیاست پورت جدا تعیین کرد. HTTP/HTTPS CONNECT فقط TCP دارد؛ SOCKS5 به پشتیبانی UDP ASSOCIATE در پراکسی نیاز دارد و قابلیت انتقال UDP دلخواه را به موتور یا کلاینت فاقد آن اضافه نمی‌کند. همهٔ بازی‌ها، تماس‌ها و QUIC پوشش داده نمی‌شوند. شمارش جریان TCP معادل شمارش دستگاه نیست و لینک مشترک، هویت مشترک حساب دارد.
 
-انتشار فقط با اجرای دستی [Build and release WhiteDNS](https://github.com/WhiteDNS/Soar-Server/actions/workflows/panel.yml) انجام می‌شود: تست‌های Go، race، نصب‌کننده، بازیابی/ارتقا و مرورگر، بیلد و سپس انتشار همان فایل‌ها در یک اجرا. PR، push و تگ بیلد خودکار تکراری راه نمی‌اندازند. [راهنمای انتشار](docs/RELEASING.md) را ببینید. آزمون گوشی فیزیکی، شبکه‌های ایران و بار تولیدی گسترده هنوز کامل نیست. [گزارش اختلال مرورگر](docs/SOAR-WEB-RELIABILITY-2026-10-18.fa.md) نتایج و توقف مقطعی مشاهده‌شده را ثبت کرده است؛ پاسخ بررسی ربات آمازون معادل بازشدن کامل فروشگاه نیست.
+انتشار فقط با اجرای دستی [Build and release WhiteDNS](https://github.com/driftcodes/Soar-Server/actions/workflows/panel.yml) انجام می‌شود: تست‌های Go، race، نصب‌کننده، بازیابی/ارتقا و مرورگر، بیلد و سپس انتشار همان فایل‌ها در یک اجرا. PR، push و تگ بیلد خودکار تکراری راه نمی‌اندازند. [راهنمای انتشار](docs/RELEASING.md) را ببینید. آزمون گوشی فیزیکی، شبکه‌های ایران و بار تولیدی گسترده هنوز کامل نیست. [گزارش اختلال مرورگر](docs/SOAR-WEB-RELIABILITY-2026-10-18.fa.md) نتایج و توقف مقطعی مشاهده‌شده را ثبت کرده است؛ پاسخ بررسی ربات آمازون معادل بازشدن کامل فروشگاه نیست.
 
-[دانلود نسخهٔ پایدار](https://github.com/WhiteDNS/Soar-Server/releases/latest) · [معماری](docs/PANEL-DESIGN.md) · [راهنمای کامل](docs/PANEL.fa.md)
+[دانلود نسخهٔ پایدار](https://github.com/driftcodes/Soar-Server/releases/latest) · [معماری](docs/PANEL-DESIGN.md) · [راهنمای کامل](docs/PANEL.fa.md)
 
 ## پروژهٔ اصلی و مجوزها
 
@@ -100,7 +100,7 @@ sudo apt-get install -y curl
 راهنمای [SERVER-GUIDE.fa.md](SERVER-GUIDE.fa.md) و دستور زیر برای سرور مستقل قدیمی باقی می‌مانند:
 
 ```bash
-bash <(curl -fsSL https://raw.githubusercontent.com/WhiteDNS/Soar-Server/main/setup.sh)
+bash <(curl -fsSL https://raw.githubusercontent.com/driftcodes/Soar-Server/main/setup.sh)
 ```
 
 این دستور **پنل نصب نمی‌کند**؛ مدیریت آن با `sudo soar-manager` است. مهاجرت از پروفایل مشترک سرور مستقل به حساب‌های پنل، به تأیید مهاجرت و لینک‌های تازهٔ حساب‌ها نیاز دارد.

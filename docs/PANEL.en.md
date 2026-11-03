@@ -38,7 +38,7 @@ DNS delegation; if another service owns port 53, resolve that conflict first.
 Connect over SSH and paste:
 
 ```bash
-bash <(curl -fsSL https://raw.githubusercontent.com/WhiteDNS/Soar-Server/main/panel-setup.sh)
+bash <(curl -fsSL https://raw.githubusercontent.com/driftcodes/Soar-Server/main/panel-setup.sh)
 ```
 
 If curl is missing:

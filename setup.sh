@@ -4,7 +4,7 @@ set -Eeuo pipefail
 export LC_ALL=C
 umask 077
 SETUP_RELEASE=0.1.3
-REPOSITORY=WhiteDNS/Soar-Server
+REPOSITORY=driftcodes/Soar-Server
 WORK=
 fail() { printf '[ERROR] %s\n' "$*" >&2; exit 1; }
 cleanup() { [[ -z $WORK ]] || rm -rf -- "$WORK"; }

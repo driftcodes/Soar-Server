@@ -3,7 +3,7 @@
 set -Eeuo pipefail
 export LC_ALL=C
 umask 077
-PANEL_REPO=WhiteDNS/Soar-Server
+PANEL_REPO=driftcodes/Soar-Server
 PANEL_WORK=
 fail(){ printf '[ERROR] %s\n' "$*" >&2;exit 1; }
 cleanup(){ [[ -z $PANEL_WORK ]] || rm -rf -- "$PANEL_WORK"; }

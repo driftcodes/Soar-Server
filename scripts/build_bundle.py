@@ -78,7 +78,7 @@ def main() -> None:
         f"Toolchain: {run('go', 'version')}\n"
         "Target: linux/amd64; CGO_ENABLED=0\n"
         "Module integrity: pinned go.mod + go.sum; Go checksum database verification\n"
-        "Distribution: WhiteDNS/Soar-Server GitHub release; SHA-256 checksums\n\n"
+        "Distribution: driftcodes/Soar-Server GitHub release; SHA-256 checksums\n\n"
         + run("go", "list", "-m", "all") + "\n"
     )
     (bundle / "SOURCE-VERSIONS.txt").write_bytes(metadata.encode("ascii"))

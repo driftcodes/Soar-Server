@@ -37,7 +37,7 @@ A host without symlink support reports skips; Ubuntu CI runs the full suite.
 After publication, verify the actual download without installing a service:
 
 ```bash
-bash <(curl -fsSL https://raw.githubusercontent.com/WhiteDNS/Soar-Server/main/setup.sh) --check-download
+bash <(curl -fsSL https://raw.githubusercontent.com/driftcodes/Soar-Server/main/setup.sh) --check-download
 ```
 
 A successful VPS diagnostic does not establish client-network reachability.
