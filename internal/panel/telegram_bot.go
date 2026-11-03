@@ -7,6 +7,7 @@ import (
 	"html"
 	"math"
 	"net/url"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -193,6 +194,8 @@ func (t *Telegram) callback(ctx context.Context, data string) error {
 			return t.chooseQuota(ctx)
 		case "expiry":
 			return t.chooseExpiry(ctx)
+		case "zones":
+			return t.zoneChoices(ctx)
 		default:
 			return t.prompt(ctx, parts[2])
 		}
@@ -209,6 +212,9 @@ func (t *Telegram) callback(ctx context.Context, data string) error {
 		}
 		if t.conversation.Creating && p[2] == "quota" {
 			return t.chooseExpiry(ctx)
+		}
+		if p[2] == "zones" || p[2] == "zone" {
+			return t.zoneChoices(ctx)
 		}
 		return t.review(ctx)
 	case strings.HasPrefix(data, "review:"):
@@ -360,6 +366,38 @@ func (t *Telegram) setField(d *telegramConversation, field, value string) error 
 			}
 			in.ExpiresAt = date.UnixMilli()
 		}
+	case "zones":
+		if value != "all" {
+			return errors.New("invalid tunnel domain choice")
+		}
+		in.TunnelZones = &[]string{}
+	case "zone":
+		cfg, e := t.h.store.Settings()
+		if e != nil {
+			return e
+		}
+		configured := cfg.tunnelZones()
+		if !slices.Contains(configured, value) {
+			return errors.New("this tunnel domain is no longer configured; reopen the domain list")
+		}
+		// Tapping a domain allows or removes it. Leaving "all" starts from every
+		// configured domain, as unticking "All" does in the web panel.
+		all, current := t.draftZones(d)
+		selected := map[string]bool{}
+		for _, zone := range configured {
+			selected[zone] = all || slices.Contains(current, zone)
+		}
+		selected[value] = !selected[value]
+		next := []string{}
+		for _, zone := range configured {
+			if selected[zone] {
+				next = append(next, zone)
+			}
+		}
+		if len(next) == 0 {
+			return errors.New("keep at least one tunnel domain selected, or choose All tunnel domains")
+		}
+		in.TunnelZones = &next
 	case "streams", "soar", "cotten", "masterdns":
 		n, e := strconv.ParseInt(v, 10, 32)
 		limit := int64(MaxStreamLimit)
@@ -426,6 +464,53 @@ func (t *Telegram) engineChoices(ctx context.Context) error {
 	_, e := t.notify(ctx, t.config(), t.tr("🔀 Choose connection engines.", "🔀 موتور اتصال را انتخاب کنید."), telegramKeyboard{Rows: [][]telegramButton{{t.button("Both", "هر دو", p+"both"), t.button("Soar", "Soar", p+"soar"), t.button("Cotten", "Cotten", p+"cotten")}, {t.button("MasterDNS", "MasterDNS", p+"masterdns"), t.button("All three", "هر سه موتور", p+"all")}, {t.button("Soar + MasterDNS", "Soar + MasterDNS", p+"soar_masterdns"), t.button("Cotten + MasterDNS", "Cotten + MasterDNS", p+"cotten_masterdns")}}})
 	return e
 }
+
+// draftZones is the domain choice of an account form: a pending change, else the
+// saved account's list, else (for a new account) every tunnel domain.
+func (t *Telegram) draftZones(d *telegramConversation) (all bool, zones []string) {
+	if d.Input.TunnelZones != nil {
+		return len(*d.Input.TunnelZones) == 0, *d.Input.TunnelZones
+	}
+	if d.ID != "" {
+		if c, e := t.h.store.Get(d.ID); e == nil {
+			zones = c.TunnelZones.list()
+		}
+	}
+	return len(zones) == 0, zones
+}
+func (t *Telegram) zoneSummary(d *telegramConversation) string {
+	if all, zones := t.draftZones(d); !all {
+		return strings.Join(zones, ", ")
+	}
+	return t.tr("All tunnel domains", "همهٔ دامنه‌های تونل")
+}
+func (t *Telegram) zoneChoices(ctx context.Context) error {
+	d := t.conversation
+	if d == nil {
+		return errors.New("form expired")
+	}
+	d.Field = ""
+	cfg, e := t.h.store.Settings()
+	if e != nil {
+		return e
+	}
+	all, zones := t.draftZones(d)
+	mark := func(on bool) string {
+		if on {
+			return "✅ "
+		}
+		return "⬜ "
+	}
+	p := "set:" + d.Key + ":"
+	k := telegramKeyboard{Rows: [][]telegramButton{{t.button(mark(all)+"All tunnel domains", mark(all)+"همهٔ دامنه‌های تونل", p+"zones:all")}}}
+	for _, zone := range cfg.tunnelZones() {
+		on := all || slices.Contains(zones, zone)
+		k.Rows = append(k.Rows, []telegramButton{t.button(mark(on)+zone, mark(on)+zone, p+"zone:"+zone)})
+	}
+	k.Rows = append(k.Rows, []telegramButton{t.button("↩️ Done", "↩️ بازگشت به فرم", "review:"+d.Key)})
+	_, e = t.notify(ctx, t.config(), t.tr("🌐 Tunnel domains for this account: "+t.zoneSummary(d)+"\nTap a domain to allow or remove it. “All” also includes domains added later. The subscription lists only allowed domains, and Soar, Cotten and MasterDNS refuse this account on other domains.", "🌐 دامنه‌های تونل این حساب: "+t.zoneSummary(d)+"\nبا لمس هر دامنه، آن را مجاز یا حذف کنید. «همه» دامنه‌هایی را که بعداً اضافه شوند هم شامل می‌شود. ساب فقط دامنه‌های مجاز را دارد و Soar، Cotten و MasterDNS این حساب را روی دامنه‌های دیگر نمی‌پذیرند."), k)
+	return e
+}
 func (t *Telegram) draftSummary(d *telegramConversation) string {
 	in := d.Input
 	soar, cotten := DefaultSoarSessionLimit, DefaultCottenSessionLimit
@@ -444,7 +529,7 @@ func (t *Telegram) draftSummary(d *telegramConversation) string {
 		loc, _ := time.LoadLocation(t.config().Timezone)
 		expiry = time.UnixMilli(in.ExpiresAt).In(loc).Format("2006-01-02 15:04") + " " + loc.String()
 	}
-	return fmt.Sprintf(t.tr("📝 Review account\nName: %s\nEngines: %s\nEnabled: %t\nQuota: %.2f GiB (0 = unlimited)\nExpiry: %s\nSpeed: %.2f KiB/s (0 = unlimited)\nTCP streams: %d (0 = unlimited)\nSessions Soar/Cotten/MasterDNS: %d / %d / %d\nNote: %s", "📝 بررسی حساب\nنام: %s\nموتور: %s\nفعال: %t\nحجم: %.2f GiB (۰ نامحدود)\nانقضا: %s\nسرعت: %.2f KiB/s (۰ نامحدود)\nجریان TCP: %d (۰ نامحدود)\nنشست Soar/Cotten/MasterDNS: %d / %d / %d\nیادداشت: %s"), in.Name, in.Engines, in.Enabled, float64(in.QuotaBytes)/(1<<30), expiry, float64(in.RateBytes)/1024, in.StreamLimit, soar, cotten, master, in.Note)
+	return fmt.Sprintf(t.tr("📝 Review account\nName: %s\nEngines: %s\nTunnel domains: %s\nEnabled: %t\nQuota: %.2f GiB (0 = unlimited)\nExpiry: %s\nSpeed: %.2f KiB/s (0 = unlimited)\nTCP streams: %d (0 = unlimited)\nSessions Soar/Cotten/MasterDNS: %d / %d / %d\nNote: %s", "📝 بررسی حساب\nنام: %s\nموتور: %s\nدامنه‌های تونل: %s\nفعال: %t\nحجم: %.2f GiB (۰ نامحدود)\nانقضا: %s\nسرعت: %.2f KiB/s (۰ نامحدود)\nجریان TCP: %d (۰ نامحدود)\nنشست Soar/Cotten/MasterDNS: %d / %d / %d\nیادداشت: %s"), in.Name, in.Engines, t.zoneSummary(d), in.Enabled, float64(in.QuotaBytes)/(1<<30), expiry, float64(in.RateBytes)/1024, in.StreamLimit, soar, cotten, master, in.Note)
 }
 func (t *Telegram) review(ctx context.Context) error {
 	d := t.conversation
@@ -459,7 +544,7 @@ func (t *Telegram) review(ctx context.Context) error {
 		{t.button("Name", "نام", p+"name"), t.button("Quota", "حجم", p+"quota"), t.button("Expiry", "انقضا", p+"expiry")},
 		{t.button("Engines", "موتور", p+"engines"), t.button("Note", "یادداشت", p+"note"), t.button("Speed", "سرعت", p+"rate")},
 		{t.button("TCP streams", "جریان TCP", p+"streams"), t.button("Soar sessions", "نشست Soar", p+"soar"), t.button("Cotten sessions", "نشست Cotten", p+"cotten")},
-		{t.button("MasterDNS sessions", "نشست MasterDNS", p+"masterdns")},
+		{t.button("MasterDNS sessions", "نشست MasterDNS", p+"masterdns"), t.button("🌐 Domains", "🌐 دامنه‌ها", p+"zones")},
 		{t.button("💾 Save", "💾 ذخیره", "save:"+d.Key), t.button("❌ Cancel", "❌ لغو", "home")}}}
 	_, e := t.notify(ctx, t.config(), t.draftSummary(d), k)
 	return e
@@ -517,7 +602,7 @@ func (t *Telegram) user(ctx context.Context, id string) error {
 	}
 	t.conversation = nil
 	t.confirmation = nil
-	d := &telegramConversation{Input: accountInput(c)}
+	d := &telegramConversation{ID: id, Input: accountInput(c)}
 	k := telegramKeyboard{Rows: [][]telegramButton{
 		{t.button("✏️ Edit", "✏️ ویرایش", "edit:"+id), t.button("🔗 Connection strings", "🔗 رشته‌های اتصال", "links:"+id)},
 		{t.button("Enable / Disable", "فعال / غیرفعال", "action:toggle:"+id), t.button("🔌 Disconnect", "🔌 قطع اتصال", "action:disconnect:"+id)},

@@ -199,7 +199,9 @@ func (m *Manager) reconcile(restart bool) error {
 			}
 			continue
 		}
-		if c.Status(time.Now()) == "active" && !m.flood.blocked(c.ID) {
+		// An account restricted to domains that no longer exist has nothing to
+		// serve; Soar, Cotten and MasterDNS all require at least one zone.
+		if c.Status(time.Now()) == "active" && !m.flood.blocked(c.ID) && len(cfg.accountZones(c)) > 0 {
 			desired[c.ID] = c
 		}
 	}

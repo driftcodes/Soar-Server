@@ -540,3 +540,4 @@ html{scrollbar-gutter:stable}
 #page-dashboard:not([data-loaded]) .stat>strong{color:transparent;background:var(--color-rule);border-radius:6px;inline-size:65%;opacity:.45}
 .page[aria-busy=true]:not([data-loaded]){cursor:progress}
 @media(prefers-reduced-motion:reduce){.page{scroll-behavior:auto}}
+.client-zones{border:0;padding:0;margin:0;min-width:0}.client-zones legend{font-weight:600;padding:0;margin-bottom:8px}.client-zones small{display:block;margin-top:8px;color:var(--color-ink-2);font-size:var(--text-xs);line-height:1.8}.client-zone-options{display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:10px}.client-zone-options[hidden]{display:none}.client-zone-options .checkbox{min-width:0;overflow-wrap:anywhere}.client-zones[hidden]{display:none}

@@ -53,6 +53,13 @@ web panel. TCP streams and engine sessions are not device counts. Custom expiry
 uses a future **Gregorian `YYYY-MM-DD HH:MM`** in the configured report timezone.
 Persian and Arabic digits are accepted for numeric values.
 
+**🌐 Domains** in the account form shows which tunnel domains the account may
+use. Tap a domain to allow or remove it, or choose **All tunnel domains**, which
+also covers domains added later. At least one domain must stay selected. The
+same limit as the web panel applies: the subscription lists only allowed domains
+and Soar, Cotten and MasterDNS refuse the account on other domains. Editing other
+fields keeps the current domain limit.
+
 Creation defaults to both engines and the dashboard's default limits. Review
 all changes before confirming. Confirmations last five minutes and work once;
 forms last fifteen minutes. `/cancel` discards the current form. `/menu` returns

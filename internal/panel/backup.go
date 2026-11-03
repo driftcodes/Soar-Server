@@ -122,6 +122,14 @@ func inspectBackupTransaction(tx *bolt.Tx, summary *BackupSummary) error {
 		if e := in.validate(); e != nil {
 			return e
 		}
+		if len(c.TunnelZones.list()) > 8 {
+			return errors.New("invalid backup account tunnel domains")
+		}
+		for _, zone := range c.TunnelZones.list() {
+			if ValidateDomain(zone) != nil {
+				return errors.New("invalid backup account tunnel domains")
+			}
+		}
 		label := strings.TrimSuffix(c.Zone, "."+cfg.BaseZone)
 		if label == c.Zone || len(label) < 1 || len(label) > 63 || strings.Contains(label, ".") || zones[c.Zone] {
 			return errors.New("invalid or duplicate backup account zone")

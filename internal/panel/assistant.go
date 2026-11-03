@@ -481,6 +481,12 @@ func (s *Store) saveAssistantSettings(expected, next Settings, action string) er
 		if !reflect.DeepEqual(normalizedAssistantSettings(old), normalizedAssistantSettings(expected)) {
 			return ErrConflict
 		}
+		// Telegram's server editor saves tunnel domains here. Apply the same
+		// account-domain invariant as the web form, against the accounts as they
+		// are now, inside this transaction.
+		if err := pruneClientTunnelZones(tx, old, next); err != nil {
+			return err
+		}
 		if err := putJSON(b, []byte("settings"), next); err != nil {
 			return err
 		}
