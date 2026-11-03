@@ -29,7 +29,7 @@ func TestPanelBrandingAndVersionBeforeLogin(t *testing.T) {
 			if len(matches) != 4 {
 				t.Fatalf("want login, sidebar, dashboard and update versions; got %d", len(matches))
 			}
-			if strings.Count(body, `href="https://github.com/WhiteDNS/Soar-Server"`) != 1 || strings.Contains(body, `class="main-footer"`) {
+			if strings.Count(body, `href="https://github.com/driftcodes/Soar-Server"`) != 1 || strings.Contains(body, `class="main-footer"`) {
 				t.Fatal("documentation/source must appear only once in the sidebar")
 			}
 			for _, match := range matches {

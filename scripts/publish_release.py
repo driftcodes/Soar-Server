@@ -14,7 +14,7 @@ import tarfile
 from release_assets import api, download, resolve_tag, verify_archive, verify_public_release
 
 ROOT = Path(__file__).resolve().parents[1]
-REPO = "WhiteDNS/Soar-Server"
+REPO = "driftcodes/Soar-Server"
 
 
 def configuration(target):
@@ -35,7 +35,7 @@ def configuration(target):
 
 def validate_context():
     if os.environ.get("GITHUB_REPOSITORY") != REPO or os.environ.get("GITHUB_REF") != "refs/heads/main":
-        raise RuntimeError("Run this release workflow from WhiteDNS/Soar-Server main")
+        raise RuntimeError(f"Run this release workflow from {REPO} main")
     head = os.environ.get("GITHUB_SHA", "")
     actual = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip()
     if not re.fullmatch(r"[0-9a-f]{40}", head) or actual != head:

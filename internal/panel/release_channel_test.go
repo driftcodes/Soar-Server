@@ -3,11 +3,11 @@ package panel
 import "testing"
 
 func releaseFixture(version string, prerelease bool) PanelRelease {
-	r := PanelRelease{Tag: "panel-v" + version, URL: "https://github.com/WhiteDNS/Soar-Server/releases/tag/panel-v" + version, Prerelease: prerelease}
+	r := PanelRelease{Tag: "panel-v" + version, URL: "https://github.com/driftcodes/Soar-Server/releases/tag/panel-v" + version, Prerelease: prerelease}
 	for _, arch := range []string{"amd64", "arm64"} {
 		for _, suffix := range []string{".tar.gz", ".tar.gz.sha256"} {
 			name := "soar-panel-" + version + "-linux-" + arch + suffix
-			r.Assets = append(r.Assets, ReleaseAsset{Name: name, URL: "https://github.com/WhiteDNS/Soar-Server/releases/download/" + r.Tag + "/" + name, Size: 100})
+			r.Assets = append(r.Assets, ReleaseAsset{Name: name, URL: "https://github.com/driftcodes/Soar-Server/releases/download/" + r.Tag + "/" + name, Size: 100})
 		}
 	}
 	return r

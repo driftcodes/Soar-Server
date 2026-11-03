@@ -8,7 +8,7 @@ HTTPS diagnostics. Generates complete IR/GLOBAL import links for WhiteDNS.
 Install from an interactive SSH terminal:
 
 ```bash
-bash <(curl -fsSL https://raw.githubusercontent.com/WhiteDNS/Soar-Server/main/setup.sh)
+bash <(curl -fsSL https://raw.githubusercontent.com/driftcodes/Soar-Server/main/setup.sh)
 ```
 
 Requires a VPS, a domain and access to its DNS panel. Follow the records shown

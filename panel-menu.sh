@@ -375,7 +375,7 @@ Database restore preserves the current administrator and local access settings.
 Create DNS A/NS records at your DNS provider; this menu cannot edit your provider.
 HTTPS uses Let's Encrypt with automatic renewal. Tunnel and web domains are
 configured separately. Changing the web domain does not change tunnel domains.
-Guide: https://github.com/WhiteDNS/Soar-Server/blob/main/docs/SERVER-MENU.en.md
+Guide: https://github.com/driftcodes/Soar-Server/blob/main/docs/SERVER-MENU.en.md
 HELP
 }
 main(){

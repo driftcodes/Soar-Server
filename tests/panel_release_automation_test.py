@@ -15,7 +15,7 @@ sys.path.insert(0,str(Path(__file__).resolve().parents[1]/"scripts"))
 import release_assets as release
 import publish_release as publish
 HEAD, BASE, MERGED = "1"*40, "2"*40, "3"*40
-REPO="WhiteDNS/Soar-Server"
+REPO="driftcodes/Soar-Server"
 
 class ReleaseGates(unittest.TestCase):
     def archive(self, arch="amd64", mutate=None, unsafe=False):

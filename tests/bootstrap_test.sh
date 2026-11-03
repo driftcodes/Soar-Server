@@ -29,7 +29,7 @@ tar -czf "$fixture_dir/$archive_root.tar.gz" -C "$fixture_dir" "$archive_root/in
 curl() {
     local arg url= output=${@: -1}
     for arg in "$@"; do [[ $arg != https://* ]] || url=$arg; done
-    [[ $url == "https://github.com/WhiteDNS/Soar-Server/releases/download/v$SETUP_RELEASE/"* ]] || return 1
+    [[ $url == "https://github.com/driftcodes/Soar-Server/releases/download/v$SETUP_RELEASE/"* ]] || return 1
     cp -- "$fixture_dir/${url##*/}" "$output"
 }
 (

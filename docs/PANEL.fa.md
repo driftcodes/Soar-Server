@@ -67,7 +67,7 @@ apt-get install -y curl
 سپس نصب‌کنندهٔ پنل را اجرا کنید:
 
 ```bash
-bash <(curl -fsSL https://raw.githubusercontent.com/WhiteDNS/Soar-Server/main/panel-setup.sh)
+bash <(curl -fsSL https://raw.githubusercontent.com/driftcodes/Soar-Server/main/panel-setup.sh)
 ```
 
 همین دستور در هر اجرا آخرین نسخهٔ پایدار معرفی‌شده در GitHub Releases را پیدا می‌کند و بستهٔ معماری سرور را با بررسی checksum دریافت می‌کند. اگر یافتن نسخه، دانلود یا بررسی بسته شکست بخورد، نصب پیش از تغییر سرویس متوقف می‌شود؛ نسخهٔ قدیمی به‌جای نسخهٔ جدید نصب نمی‌شود.

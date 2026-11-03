@@ -4,7 +4,7 @@ set -Eeuo pipefail
 export LC_ALL=C
 umask 077
 ROOT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
-PANEL_VERSION=0.14.0
+PANEL_VERSION=0.15.0
 DB=/var/lib/soar-panel/panel.db
 SERVICE=/etc/systemd/system/soar-panel.service
 OPS_SERVICE=/etc/systemd/system/soar-panel-ops.service
@@ -282,7 +282,7 @@ printf 'If it does not connect, check NS/A records, UDP/53, TCP/53 and client re
 printf 'Service: systemctl status soar-panel\nLogs: journalctl -u soar-panel -n 40 --no-pager\n'
 printf 'Private rollback backup: %s\n' "$backup"
 printf 'Server management menu: sudo soar-panel menu (or sudo whitedns)\n'
-printf 'Guide: https://github.com/WhiteDNS/Soar-Server/blob/panel-v0.7.0/docs/PANEL.fa.md\n'
+printf 'Guide: https://github.com/driftcodes/Soar-Server/blob/main/docs/PANEL.fa.md\n'
 printf '\nConfigure a domain, automatic HTTPS and a random login path now or later.\n'
 flock -u 8
 flock -u 9

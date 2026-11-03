@@ -11,7 +11,7 @@
 3. دسترسی به پنل فایروال VPS؛ ممکن است نام آن `Firewall`، `Security group` یا `Network rules` باشد.
 4. بستهٔ کامل `soar-server-setup-0.1.3-linux-amd64.tar.gz` و فایل checksum کنار آن. فقط `install.sh` را کپی نکنید؛ باینری‌های آماده داخل بسته لازم‌اند.
 
-بستهٔ رسمی را از Releases ریپوی WhiteDNS/Soar-Server دریافت کنید. checksum خرابی دانلود را مشخص می‌کند؛ آن را امضای مستقل ناشر ندانید.
+بستهٔ رسمی را از Releases ریپوی driftcodes/Soar-Server دریافت کنید. checksum خرابی دانلود را مشخص می‌کند؛ آن را امضای مستقل ناشر ندانید.
 
 اگر روی VPS فعلی DNS عمومی، پنل میزبانی یا سرویس مهم دارید، ابتدا نسخهٔ پشتیبان داشته باشید. اسکریپت تعارض پورت را بررسی می‌کند و DNS موجود را خاموش نمی‌کند. برای نصب اول، یک VPS اختصاصی آزمایشی کار را ساده‌تر می‌کند.
 
@@ -20,7 +20,7 @@
 پس از ورود با SSH، این دستور را اجرا کنید:
 
 ```bash
-bash <(curl -fsSL https://raw.githubusercontent.com/WhiteDNS/Soar-Server/main/setup.sh)
+bash <(curl -fsSL https://raw.githubusercontent.com/driftcodes/Soar-Server/main/setup.sh)
 ```
 
 بستهٔ نسخه‌دار و checksum دانلود و بررسی می‌شوند، سپس هفت مرحلهٔ نصب در همان ترمینال شروع می‌شود. مسیر دستی زیر هم قابل استفاده است.

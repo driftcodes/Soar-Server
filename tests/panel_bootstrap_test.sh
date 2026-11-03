@@ -16,21 +16,21 @@ if (main --unknown) >/dev/null 2>&1;then echo 'FAIL bad invocation';exit 1;fi
 bash -n "$repo/panel-setup.sh"
 echo 'PASS: panel bootstrap checksum, filename, traversal and invocation checks'
 
-latest_url=https://github.com/WhiteDNS/Soar-Server/releases/tag/panel-v0.7.0
+latest_url=https://github.com/driftcodes/Soar-Server/releases/tag/panel-v0.7.0
 curl(){
  local url= destination=
  while (( $# ));do case "$1" in https://*) url=$1 ;; -o|--output) shift;destination=$1 ;; esac;shift;done
  printf '%s\n' "$url" >>"$work/requests"
- if [[ $url == https://github.com/WhiteDNS/Soar-Server/releases/latest ]];then
+ if [[ $url == https://github.com/driftcodes/Soar-Server/releases/latest ]];then
   [[ ${discovery_fails:-0} == 0 ]] || return 22
   printf '%s' "$latest_url"
   return
  fi
- [[ $url == "https://github.com/WhiteDNS/Soar-Server/releases/download/panel-v$version/$asset" || $url == "https://github.com/WhiteDNS/Soar-Server/releases/download/panel-v$version/$asset.sha256" ]] || return 1
+ [[ $url == "https://github.com/driftcodes/Soar-Server/releases/download/panel-v$version/$asset" || $url == "https://github.com/driftcodes/Soar-Server/releases/download/panel-v$version/$asset.sha256" ]] || return 1
  cp "$work/${url##*/}" "$destination"
 }
 for version in 0.7.0 0.12.3;do
-latest_url="https://github.com/WhiteDNS/Soar-Server/releases/tag/panel-v$version"
+latest_url="https://github.com/driftcodes/Soar-Server/releases/tag/panel-v$version"
 for host in x86_64 amd64 aarch64 arm64;do
  case "$host" in x86_64|amd64) arch=amd64 ;; *) arch=arm64 ;; esac
  [[ $(panel_arch "$host") == "$arch" ]]
@@ -53,18 +53,18 @@ grep -q 'Unsupported architecture' "$work/result"
 echo 'PASS: latest stable and future releases, amd64/arm64 aliases and architecture-specific downloads'
 
 for latest_url in \
- 'https://github.com/WhiteDNS/Soar-Server/releases/tag/panel-v0.8.0-beta1' \
- 'https://github.com/WhiteDNS/Soar-Server/releases/tag/panel-v0.8.0/extra' \
- 'https://github.com/WhiteDNS/Soar-Server/releases/tag/panel-v01.8.0' \
- 'https://github.com/WhiteDNS/Soar-Server/releases/tag/v0.1.3' \
+ 'https://github.com/driftcodes/Soar-Server/releases/tag/panel-v0.8.0-beta1' \
+ 'https://github.com/driftcodes/Soar-Server/releases/tag/panel-v0.8.0/extra' \
+ 'https://github.com/driftcodes/Soar-Server/releases/tag/panel-v01.8.0' \
+ 'https://github.com/driftcodes/Soar-Server/releases/tag/v0.1.3' \
  'https://github.com/another/repo/releases/tag/panel-v0.8.0' \
- 'https://example.com/WhiteDNS/Soar-Server/releases/tag/panel-v0.8.0';do
+ 'https://example.com/driftcodes/Soar-Server/releases/tag/panel-v0.8.0';do
  : >"$work/requests"
  if (main --check-download) >"$work/result" 2>&1;then echo 'FAIL invalid latest release accepted';exit 1;fi
  [[ $(wc -l <"$work/requests") -eq 1 ]] # No archive downloads after rejected metadata.
  grep -q 'Installation was not started' "$work/result"
 done
-latest_url=https://github.com/WhiteDNS/Soar-Server/releases/tag/panel-v0.12.3
+latest_url=https://github.com/driftcodes/Soar-Server/releases/tag/panel-v0.12.3
 : >"$work/requests"
 if (discovery_fails=1;main --check-download) >"$work/result" 2>&1;then echo 'FAIL discovery failure ignored';exit 1;fi
 [[ $(wc -l <"$work/requests") -eq 1 ]]

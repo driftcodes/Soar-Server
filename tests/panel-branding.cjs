@@ -7,8 +7,8 @@ module.exports=async({page,out,assert})=>{
   assert.equal(await target.title(),name);
   for(const selector of ['.login-foot','.sidebar-foot']){const text=await target.locator(selector).textContent();assert.ok(text.includes(name));assert.doesNotMatch(text,/Soar|Lantern/);}
   assert.doesNotMatch(await target.locator('.login-card .muted').innerText(),/Soar/);
-  assert.equal(await target.locator('a[href="https://github.com/WhiteDNS/Soar-Server"]').count(),1);
-  assert.equal(await target.locator('.sidebar-foot a[href="https://github.com/WhiteDNS/Soar-Server"]').count(),1);
+  assert.equal(await target.locator('a[href="https://github.com/driftcodes/Soar-Server"]').count(),1);
+  assert.equal(await target.locator('.sidebar-foot a[href="https://github.com/driftcodes/Soar-Server"]').count(),1);
   assert.equal(await target.locator('.main-footer').count(),0);
  };
  const context=await page.context().browser().newContext(),login=await context.newPage();
